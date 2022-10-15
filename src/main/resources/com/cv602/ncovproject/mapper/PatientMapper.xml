@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--namespace :命名空间 ，要将对应的接口的全限定类名关联上-->
+<mapper namespace="com.cv602.ncovproject.mapper.PatientMapper">
+    <select id="getAllPatient" resultType="com.cv602.ncovproject.domain.Patient">
+        SELECT * FROM patient
+        <where>
+            <if test="beginDate != null">
+                and suretime >= #{beginDate}
+            </if>
+            <if test="endDate != null">
+                and suretime &lt;= #{endDate}
+            </if>
+            <if test="name != null and name.trim() != ''">
+                and patientname like #{name}
+            </if>
+        </where>
+    </select>
+
+    <select id="totalCount" resultType="long">
+        SELECT COUNT(1) FROM patient
+        <where>
+            <if test="beginDate != null">
+                and suretime >= #{beginDate}
+            </if>
+            <if test="endDate != null">
+                and suretime &lt;= #{endDate}
+            </if>
+            <if test="name != null and name.trim() != ''">
+                and patientname like #{name}
+            </if>
+        </where>
+    </select>
+
+    <select id="getCountByState" resultType="com.cv602.ncovproject.pojo.CountBean">
+        SELECT COUNT(id) value,
+        CASE WHEN patientstate = 0 THEN '治疗中'
+        WHEN patientstate = 1 THEN '已治愈'
+        ELSE '死亡' END name
+        FROM patient
+        GROUP BY patientstate
+    </select>
+
+<!--    新增-->
+
+    <select id="ydCount" resultType="long">
+        SELECT COUNT(1) FROM patient
+        <where>
+            TO_DAYS( now( ) ) - TO_DAYS( suretime) = 1
+        </where>
+    </select>
+
+    <select id="getCountByLineChart" resultType="com.cv602.ncovproject.pojo.MonthBean">
+        SELECT
+            COUNT(CASE WHEN suretime >= '2020-01-01' AND suretime &lt;= '2020-01-31' THEN 'jan' END ) 'jan',
+                COUNT(CASE WHEN suretime >= '2020-02-01' AND suretime &lt;= '2020-02-28' THEN 'feb' END ) 'feb',
+                COUNT(CASE WHEN suretime >= '2020-03-01' AND suretime &lt;= '2020-03-31' THEN 'mar' END ) 'mar',
+                COUNT(CASE WHEN suretime >= '2020-04-01' AND suretime &lt;= '2020-04-30' THEN 'api' END ) 'api',
+                COUNT(CASE WHEN suretime >= '2020-05-01' AND suretime &lt;= '2020-05-31' THEN 'may' END ) 'may',
+                COUNT(CASE WHEN suretime >= '2020-06-01' AND suretime &lt;= '2020-06-30' THEN 'jun' END ) 'jun'
+        FROM patient WHERE patienttype = 1
+        UNION
+        SELECT
+            COUNT(CASE WHEN suretime >= '2020-01-01' AND suretime &lt;= '2020-01-31' THEN 'jan' END ) 'jan',
+                COUNT(CASE WHEN suretime >= '2020-02-01' AND suretime &lt;= '2020-02-28' THEN 'feb' END ) 'feb',
+                COUNT(CASE WHEN suretime >= '2020-03-01' AND suretime &lt;= '2020-03-31' THEN 'mar' END ) 'mar',
+                COUNT(CASE WHEN suretime >= '2020-04-01' AND suretime &lt;= '2020-04-30' THEN 'api' END ) 'api',
+                COUNT(CASE WHEN suretime >= '2020-05-01' AND suretime &lt;= '2020-05-31' THEN 'may' END ) 'may',
+                COUNT(CASE WHEN suretime >= '2020-06-01' AND suretime &lt;= '2020-06-30' THEN 'jun' END ) 'jun'
+        FROM patient WHERE patienttype = 2
+    </select>
+
+    <select id="getCountByMap" resultType="com.cv602.ncovproject.pojo.CountBean">
+        SELECT
+            province AS 'name',
+                COUNT( 1 ) AS 'value'
+        FROM
+            gx
+                JOIN patient ON patient.districtid = gx.Id
+        GROUP BY
+            province UNION ALL
+        SELECT
+            province AS 'name',
+                SUM( 0 ) AS 'value'
+        FROM
+            gx
+        WHERE
+                gx.province NOT IN ( SELECT gx.province FROM gx WHERE gx.Id IN ( SELECT patient.districtid FROM patient ) GROUP BY province )
+        GROUP BY
+            province
+        ORDER BY VALUE DESC;
+    </select>
+
+
+    <select id="getCountByZr" resultType="com.cv602.ncovproject.pojo.CountBean">
+        SELECT
+            province AS 'name',
+                COUNT( 1 ) AS 'value'
+        FROM
+            gx
+                JOIN patient ON patient.districtid = gx.Id
+        WHERE TO_DAYS(NOW()) - TO_DAYS(patient.suretime) = 1
+        GROUP BY
+            province UNION ALL
+        SELECT
+            province AS 'name',
+                SUM( 0 ) AS 'value'
+        FROM
+            gx
+        WHERE
+                gx.province NOT IN ( SELECT gx.province FROM gx WHERE gx.Id IN ( SELECT patient.districtid FROM patient WHERE TO_DAYS(NOW()) - TO_DAYS(patient.suretime) = 1) GROUP BY province )
+        GROUP BY
+            province
+        ORDER BY VALUE DESC;
+    </select>
+</mapper>
